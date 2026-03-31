@@ -21,7 +21,10 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { secureHeaders } from 'hono/secure-headers'
-import Database from 'sqlite3'
+
+// Import sqlite3 with ESM compatibility
+import sqlite3Pkg from 'sqlite3'
+const { Database } = sqlite3Pkg
 
 // Initialize Express-like app with Hono
 const app = new Hono()
@@ -50,19 +53,23 @@ const RATE_LIMIT_MAX = 100
 const RATE_LIMIT_WINDOW = 60 * 1000 // 60s
 
 app.use('*', async (c, next) => {
-  const ip = c.req.header('x-forwarded-for')?.split(',')[0] || 'unknown'
-  const now = Date.now()
-  const entry = rateLimitStore.get(ip)
+  try {
+    const ip = c.req.header('x-forwarded-for')?.split(',')[0] || 'unknown'
+    const now = Date.now()
+    const entry = rateLimitStore.get(ip)
 
-  if (!entry || now > entry.resetAt) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW })
-  } else if (entry.count >= RATE_LIMIT_MAX) {
-    return c.json({ error: 'Rate limit exceeded' }, 429)
-  } else {
-    entry.count++
+    if (!entry || now > entry.resetAt) {
+      rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW })
+    } else if (entry.count >= RATE_LIMIT_MAX) {
+      return c.json({ error: 'Rate limit exceeded' }, 429)
+    } else {
+      entry.count++
+    }
+
+    c.header('X-RateLimit-Remaining', String(RATE_LIMIT_MAX - entry.count))
+  } catch (err) {
+    console.error('Rate limit error:', err)
   }
-
-  c.header('X-RateLimit-Remaining', String(RATE_LIMIT_MAX - entry.count))
   await next()
 })
 
@@ -306,11 +313,17 @@ app.get('/health', (c) => {
   })
 })
 
-// Start server
-const PORT = process.env.PORT || 3001
-app.listen(PORT, () => {
+// Start server with Node.js adapter
+import { serve } from '@hono/node-server'
+
+const PORT = Number(process.env.PORT) || 3001
+
+serve({
+  fetch: app.fetch,
+  port: PORT,
+}, () => {
   console.log(`🚀 Remote Key Manager running on http://localhost:${PORT}`)
   console.log(`📚 API docs: http://localhost:${PORT}/`)
-  console.log(`🔑 API Key: ${API_KEY}`)
+  console.log(`🔑 API Key configured: ${process.env.API_KEY ? 'Yes' : 'No'}`)
   console.log(`⚠️  Change API_KEY in production!`)
 })

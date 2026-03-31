@@ -4,14 +4,16 @@
   "description": "Remote Key Manager for AgentPad Passkey Auth",
   "type": "module",
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
-    "start": "bun src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.2.0",
-    "sqlite3": "^5.1.7"
+    "@hono/node-server": "^1.19.12",
+    "hono": "^4.12.9",
+    "sqlite3": "^5.1.7",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
