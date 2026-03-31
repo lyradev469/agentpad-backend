@@ -38,9 +38,21 @@ bun install
 ```
 
 ### 2. Set Environment Variables
+
+Create a `.env` file:
+```bash
+# .env
+API_KEY=your-super-secret-key  # Generate: openssl rand -hex 32
+PORT=3001
+CORS_ORIGINS=http://localhost:3000,https://agentpad.vercel.app
+NODE_ENV=development
+```
+
+Or export directly:
 ```bash
 export API_KEY="my-secret-key-change-me"
 export PORT=3001
+export CORS_ORIGINS="http://localhost:3000"
 ```
 
 ### 3. Run Development Server

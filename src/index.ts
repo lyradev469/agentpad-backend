@@ -28,12 +28,43 @@ const app = new Hono()
 
 // Middleware
 app.use('*', logger())
+
+// Dynamic CORS from Environment
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
+  : ['http://localhost:3000', 'https://agentpad.vercel.app']
+
 app.use('*', cors({
-  origin: ['http://localhost:3000', 'https://agentpad.vercel.app'], // Update for production
-  allowMethods: ['GET', 'POST', 'DELETE'],
+  origin: allowedOrigins,
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'X-API-Key'],
+  credentials: true,
+  maxAge: 86400,
 }))
+
 app.use('*', secureHeaders())
+
+// Simple Rate Limiting (In-memory for Dev, use Redis for Prod scale)
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT_MAX = 100
+const RATE_LIMIT_WINDOW = 60 * 1000 // 60s
+
+app.use('*', async (c, next) => {
+  const ip = c.req.header('x-forwarded-for')?.split(',')[0] || 'unknown'
+  const now = Date.now()
+  const entry = rateLimitStore.get(ip)
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW })
+  } else if (entry.count >= RATE_LIMIT_MAX) {
+    return c.json({ error: 'Rate limit exceeded' }, 429)
+  } else {
+    entry.count++
+  }
+
+  c.header('X-RateLimit-Remaining', String(RATE_LIMIT_MAX - entry.count))
+  await next()
+})
 
 // SQLite Database Setup
 const dbPath = './passkeys.db'
