@@ -2,21 +2,11 @@
   "buildCommand": "echo 'No build step required'",
   "devCommand": "node src/index.ts",
   "installCommand": "npm install",
-  "functions": {
-    "maxDuration": 10
-  },
   "regions": ["iad1", "sfo1"],
   "env": {
     "NODE_ENV": "production"
   },
   "routes": [
-    {
-      "src": "/health",
-      "dest": "/src/index.ts",
-      "headers": {
-        "Cache-Control": "no-cache"
-      }
-    },
     {
       "src": "/.*",
       "dest": "/src/index.ts"
